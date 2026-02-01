@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新年擲筊抽好運 - 良美眼鏡</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel CDN (用於在瀏覽器直接運行 JSX) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #FDFBF7;
+        }
+
+        .font-serif {
+            font-family: 'Noto Serif TC', serif;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateY(0) rotateZ(var(--base-rot)); }
+            50% { transform: translateY(-35px) rotateZ(calc(var(--base-rot) + 12deg)); }
+        }
+        .shaking-left {
+            --base-rot: -20deg;
+            animation: shake 0.6s ease-in-out 3;
+        }
+        .shaking-right {
+            --base-rot: 20deg;
+            animation: shake 0.6s ease-in-out 3;
+        }
+
+        .title-wide {
+            letter-spacing: 0.25em;
+            text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.1);
+        }
+
+        [backface-visibility="hidden"] {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // 建立 Icon 組件
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+        };
+
+        const App = () => {
+            const [gameState, setGameState] = useState('intro');
+            const [wonPrize, setWonPrize] = useState(null);
+            const [isTossing, setIsTossing] = useState(false);
+            const [hasDrawnBefore, setHasDrawnBefore] = useState(false);
+            const [isRedeemed, setIsRedeemed] = useState(false);
+            const [showConfirm, setShowConfirm] = useState(false);
+            const [resultFaces, setResultFaces] = useState([0, 0]);
+
+            const STORAGE_KEY = 'new_year_2025_prize_v6';
+            const REDEEM_KEY = 'new_year_2025_redeemed_v6';
+
+            const prizes = [
+                { id: 1, label: '神明也笑開，馬上有錢花！', value: 500, weight: 50 },
+                { id: 2, label: '神明也笑開，換框馬上變好看！', value: 800, weight: 30 },
+                { id: 3, label: '聖筊報喜，馬年一馬當先！', value: 1000, weight: 15 },
+                { id: 4, label: '神馬好運🤩這包獎金最神氣！', value: 1800, weight: 5 } 
+            ];
+
+            useEffect(() => {
+                const savedPrize = localStorage.getItem(STORAGE_KEY);
+                if (savedPrize) {
+                    const prize = JSON.parse(savedPrize);
+                    setWonPrize(prize);
+                    setGameState('result');
+                    setHasDrawnBefore(true);
+                    setResultFaces(prize.value >= 1000 ? [0, 1] : [1, 1]); 
+                }
+                const savedRedeem = localStorage.getItem(REDEEM_KEY);
+                if (savedRedeem === 'true') {
+                    setIsRedeemed(true);
+                }
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, []);
+
+            const handleStartDraw = () => {
+                if (hasDrawnBefore || isTossing) return;
+                setIsTossing(true);
+                setGameState('drawing');
+                setTimeout(() => {
+                    const random = Math.random() * 100;
+                    let cumulativeWeight = 0;
+                    let selectedPrize = prizes[0];
+                    for (const prize of prizes) {
+                        cumulativeWeight += prize.weight;
+                        if (random < cumulativeWeight) {
+                            selectedPrize = prize;
+                            break;
+                        }
+                    }
+                    const faces = selectedPrize.value >= 1000 ? [0, 1] : [1, 1];
+                    setResultFaces(faces);
+                    setWonPrize(selectedPrize);
+                    setIsTossing(false);
+                    setGameState('result');
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedPrize));
+                }, 1800);
+            };
+
+            const confirmRedeem = () => {
+                setIsRedeemed(true);
+                setShowConfirm(false);
+                localStorage.setItem(REDEEM_KEY, 'true');
+            };
+
+            const colors = {
+                bg: 'bg-[#FDFBF7]', 
+                primary: '#e03333', 
+                darkRed: '#c41e3a', 
+                deepRed: '#8b1a1a', 
+                outline: '#222',    
+                gold: '#C5A059',
+            };
+
+            const AuthenticBwei = ({ isFlat, isTossing, side }) => {
+                let transform = side === 'left' 
+                    ? `translateX(5px) rotateZ(-2deg)` 
+                    : `translateX(-5px) rotateZ(2deg) scaleX(-1)`;
+
+                if (!isTossing && gameState === 'result') {
+                    const rotZ = side === 'left' ? -35 : 35;
+                    transform = side === 'left'
+                        ? `translateX(-55px) translateY(-20px) rotateY(${isFlat ? 180 : 0}deg) rotateZ(${rotZ}deg)`
+                        : `translateX(55px) translateY(-10px) rotateY(${isFlat ? 180 : 0}deg) rotateZ(${rotZ}deg) scaleX(-1)`;
+                }
+
+                return (
+                    <div className={`relative w-[110px] h-[160px] transition-all duration-700 ${isTossing ? (side === 'left' ? 'shaking-left' : 'shaking-right') : ''}`}
+                         style={{ transform, transformStyle: 'preserve-3d' }}>
+                        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
+                            <svg viewBox="0 0 100 150" className="w-full h-full drop-shadow-lg">
+                                <path d="M75,10 C35,10 10,40 10,75 C10,110 35,140 75,140 C55,110 55,40 75,10 Z" fill={colors.primary} stroke={colors.outline} strokeWidth="2.5" />
+                                <path d="M75,15 C58,45 58,105 75,135" fill="none" stroke={colors.darkRed} strokeWidth="5" strokeLinecap="round" opacity="0.6"/>
+                                <path d="M30,35 C20,55 20,95 30,115" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.3"/>
+                            </svg>
+                        </div>
+                        <div className="absolute inset-0" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
+                            <svg viewBox="0 0 100 150" className="w-full h-full drop-shadow-md">
+                                <path d="M75,10 C35,10 10,40 10,75 C10,110 35,140 75,140 C55,110 55,40 75,10 Z" fill={colors.deepRed} stroke={colors.outline} strokeWidth="2.5" />
+                                <path d="M45,30 L65,30 M40,75 L70,75 M45,120 L65,120" stroke="#5a0e0e" strokeWidth="3" strokeLinecap="round" opacity="0.8"/>
+                            </svg>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[#FDFBF7]">
+                    <main className="w-full max-w-md bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col relative">
+                        <div className="h-2.5 w-full flex">
+                            <div className="flex-1 bg-[#e03333]"></div>
+                            <div className="w-24 bg-[#C5A059]"></div>
+                        </div>
+                        
+                        <div className="p-10 text-center flex-1 flex flex-col items-center">
+                            <div className="mb-6">
+                                <span className="text-[10px] font-bold tracking-[0.5em] uppercase text-[#C5A059] border-b-2 border-[#C5A059] pb-1">
+                                    LINE新好友專屬活動
+                                </span>
+                            </div>
+                            
+                            {gameState !== 'result' && (
+                                <>
+                                    <div className="mb-4 px-2">
+                                        <h1 className="text-2xl font-black title-wide leading-[1.6]">新年手氣測驗！挑戰聖筊</h1>
+                                    </div>
+                                    <p className="text-[#e03333] text-[13px] font-bold mb-10 tracking-[0.3em]">最高現領$1800配鏡金</p>
+                                </>
+                            )}
+
+                            {/* 結果頁高度調整為 h-36 */}
+                            <div className={`relative w-full flex flex-col items-center justify-center ${gameState === 'result' ? 'h-36 mt-0 mb-0' : 'h-72 mb-10'}`}>
+                                <div onClick={handleStartDraw} className={`group cursor-pointer flex flex-col items-center w-full transition-all duration-500 ${gameState === 'result' ? 'scale-75' : 'scale-100'}`}>
+                                    <div className="flex justify-center items-center w-full relative h-48">
+                                        <AuthenticBwei side="left" isTossing={isTossing} isFlat={resultFaces[0] === 1} />
+                                        <AuthenticBwei side="right" isTossing={isTossing} isFlat={resultFaces[1] === 1} />
+                                    </div>
+                                    {gameState === 'intro' && (
+                                        <div className="mt-14 px-12 py-3.5 bg-[#e03333] border-2 border-[#1A1A1A] rounded-full shadow-[5px_5px_0px_#1A1A1A] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
+                                            <p className="text-xs font-bold text-white tracking-[0.3em] animate-pulse">● 點擊開始擲筊</p>
+                                        </div>
+                                    )}
+                                    {gameState === 'drawing' && (
+                                        <p className="mt-14 text-[11px] font-bold text-[#e03333] tracking-[0.6em] animate-pulse uppercase">祈求福份中...</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {gameState === 'result' && wonPrize && (
+                                <div className="flex flex-col items-center w-full mt-2 mb-4">
+                                    <div className={`p-8 rounded-[2.5rem] border-2 border-[#1A1A1A] w-full relative shadow-[8px_8px_0px_#C5A059] transition-opacity duration-500 ${isRedeemed ? 'bg-gray-100 grayscale opacity-70' : 'bg-[#FAF7F2]'}`}>
+                                        <div className={`absolute -top-4 left-1/2 -translate-x-1/2 text-white px-8 py-1.5 rounded-full text-[11px] font-bold tracking-[0.2em] whitespace-nowrap shadow-lg ${isRedeemed ? 'bg-gray-500' : 'bg-[#1A1A1A]'}`}>
+                                            {isRedeemed ? '券已核銷（已失效）' : (wonPrize.value >= 1000 ? '聖筊 ✨ 恭喜你擲出' : '笑筊 😄 恭喜你擲出')}
+                                        </div>
+                                        <div className="mt-6 flex items-baseline justify-center gap-1 mb-6">
+                                            <span className="text-sm text-[#C5A059] font-bold italic">NT$</span>
+                                            <span className="text-7xl font-serif font-black tracking-tighter text-[#e03333]">{wonPrize.value}</span>
+                                        </div>
+                                        <p className="text-lg font-bold text-slate-800 mb-8 tracking-widest">{wonPrize.label}</p>
+                                        <div className="pt-8 border-t-2 border-dashed border-slate-200 space-y-4">
+                                            <p className="text-[11px] text-slate-500 flex items-center justify-center gap-2">
+                                                <Icon name="calendar" size={14} className="text-[#e03333]" />
+                                                有效期限：至 2026/05/31
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 flex items-center justify-center gap-2 leading-tight">
+                                                <Icon name="map-pin" size={14} className="text-[#e03333]" />
+                                                台南市永康區永大路二段189號
+                                            </p>
+                                        </div>
+                                        {isRedeemed && (
+                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] border-4 border-gray-400 text-gray-400 font-black px-6 py-2 text-3xl rounded-xl opacity-80 pointer-events-none">VOID 已兌換</div>
+                                        )}
+                                    </div>
+                                    {!isRedeemed && (
+                                        <button onClick={() => setShowConfirm(true)} className="mt-10 flex items-center gap-2 text-[11px] font-bold text-slate-400 hover:text-[#e03333] transition-colors tracking-[0.3em] uppercase border border-slate-200 px-6 py-2 rounded-full">
+                                            店員核銷專用（請勿點擊）
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {gameState !== 'result' && (
+                                <div className="text-left bg-white p-7 rounded-[2rem] border-2 border-[#1A1A1A] shadow-[5px_5px_0px_#FAF7F2]">
+                                    <h3 className="text-[11px] font-bold text-slate-900 flex items-center gap-2 mb-4 uppercase tracking-widest">活動規則</h3>
+                                    <ul className="text-[11px] text-slate-400 space-y-3.5 leading-relaxed font-medium">
+                                        <li className="flex gap-2"><span>🧧</span> <span>本活動為新朋友專屬，限首次配鏡使用！</span></li>
+                                        <li className="flex gap-2"><span>🧧</span> <span>優惠需配鏡並搭配「任一蔡司系列鏡片」。</span></li>
+                                        <li className="flex gap-2"><span>🧧</span> <span>每人限領取一次優惠，且不與其他優惠活動重複使用。</span></li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+
+                    {showConfirm && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                            <div className="bg-white rounded-[2rem] p-8 max-w-xs w-full shadow-2xl">
+                                <h3 className="text-lg font-bold text-center mb-4">確認核銷優惠券？</h3>
+                                <p className="text-sm text-slate-500 text-center mb-8">此操作僅限店員執行，核銷後優惠券將立即失效且無法恢復。</p>
+                                <div className="flex flex-col gap-3">
+                                    <button onClick={confirmRedeem} className="w-full py-4 bg-[#e03333] text-white rounded-xl font-bold">店員確認核銷</button>
+                                    <button onClick={() => setShowConfirm(false)} className="w-full py-4 text-slate-400 font-bold">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
