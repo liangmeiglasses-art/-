@@ -6,7 +6,7 @@
     <title>新年擲筊抽好運 - 良美眼鏡</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & Babel CDN (用於在瀏覽器直接運行 JSX) -->
+    <!-- React & Babel CDN -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -18,6 +18,7 @@
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #FDFBF7;
+            overflow-x: hidden;
         }
 
         .font-serif {
@@ -38,8 +39,33 @@
         }
 
         .title-wide {
-            letter-spacing: 0.25em;
+            letter-spacing: 0.2em;
             text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.1);
+        }
+
+        /* 碎紙屑下墜動畫 */
+        @keyframes confetti-fall {
+            0% { transform: translateY(-10vh) rotateX(0deg) rotateY(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(100vh) rotateX(360deg) rotateY(180deg); opacity: 0; }
+        }
+        .confetti-piece {
+            position: fixed;
+            top: -20px;
+            z-index: 100;
+            animation: confetti-fall 4s linear forwards;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        /* 標籤閃爍動畫 */
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1) translateX(-50%); }
+            50% { opacity: 0.85; transform: scale(1.08) translateX(-46.3%); }
+        }
+        .sparkle-label {
+            animation: sparkle 1.5s ease-in-out infinite;
         }
 
         [backface-visibility="hidden"] {
@@ -52,7 +78,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
         // 建立 Icon 組件
         const Icon = ({ name, size = 24, className = "" }) => {
@@ -64,6 +90,38 @@
             return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
         };
 
+        // 紅金碎紙屑特效組件
+        const ConfettiEffect = () => {
+            const pieces = useMemo(() => {
+                const colors = ['#e03333', '#FFD700', '#C5A059', '#ff4d4d'];
+                return Array.from({ length: 70 }).map((_, i) => ({
+                    id: i,
+                    left: Math.random() * 100 + 'vw',
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    delay: Math.random() * 3 + 's',
+                    width: Math.random() * 8 + 6 + 'px',
+                    height: Math.random() * 10 + 6 + 'px',
+                    duration: Math.random() * 2 + 3 + 's'
+                }));
+            }, []);
+
+            return (
+                <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+                    {pieces.map(p => (
+                        <div key={p.id} className="confetti-piece" style={{
+                            left: p.left,
+                            backgroundColor: p.color,
+                            width: p.width,
+                            height: p.height,
+                            animationDelay: p.delay,
+                            animationDuration: p.duration,
+                            borderRadius: Math.random() > 0.8 ? '50%' : '2px'
+                        }}></div>
+                    ))}
+                </div>
+            );
+        };
+
         const App = () => {
             const [gameState, setGameState] = useState('intro');
             const [wonPrize, setWonPrize] = useState(null);
@@ -73,17 +131,19 @@
             const [showConfirm, setShowConfirm] = useState(false);
             const [resultFaces, setResultFaces] = useState([0, 0]);
 
+            // 定義儲存鍵值
             const STORAGE_KEY = 'new_year_2025_prize_v6';
             const REDEEM_KEY = 'new_year_2025_redeemed_v6';
 
             const prizes = [
-                { id: 1, label: '神明也笑開，馬上有錢花！', value: 500, weight: 50 },
-                { id: 2, label: '神明也笑開，換框馬上變好看！', value: 800, weight: 30 },
-                { id: 3, label: '聖筊報喜，馬年一馬當先！', value: 1000, weight: 15 },
+                { id: 1, label: '神明也笑開，您的開運金已到帳！', value: 500, weight: 50 },
+                { id: 2, label: '神明也笑開，您的開運金已到帳！', value: 800, weight: 30 },
+                { id: 3, label: '聖筊好運，馬年一馬當先！', value: 1000, weight: 15 },
                 { id: 4, label: '神馬好運🤩這包獎金最神氣！', value: 1800, weight: 5 } 
             ];
 
             useEffect(() => {
+                // 初始化檢查：每位客人都只能抽一次
                 const savedPrize = localStorage.getItem(STORAGE_KEY);
                 if (savedPrize) {
                     const prize = JSON.parse(savedPrize);
@@ -102,7 +162,9 @@
             }, []);
 
             const handleStartDraw = () => {
+                // 防呆：如果已經抽過獎或正在擲筊中，則不執行
                 if (hasDrawnBefore || isTossing) return;
+                
                 setIsTossing(true);
                 setGameState('drawing');
                 setTimeout(() => {
@@ -121,6 +183,9 @@
                     setWonPrize(selectedPrize);
                     setIsTossing(false);
                     setGameState('result');
+                    setHasDrawnBefore(true); // 標記為已抽過
+                    
+                    // 永久保存結果到使用者手機
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedPrize));
                 }, 1800);
             };
@@ -148,8 +213,8 @@
                 if (!isTossing && gameState === 'result') {
                     const rotZ = side === 'left' ? -35 : 35;
                     transform = side === 'left'
-                        ? `translateX(-55px) translateY(-20px) rotateY(${isFlat ? 180 : 0}deg) rotateZ(${rotZ}deg)`
-                        : `translateX(55px) translateY(-10px) rotateY(${isFlat ? 180 : 0}deg) rotateZ(${rotZ}deg) scaleX(-1)`;
+                        ? `translateX(-55px) translateY(-10px) rotateY(${isFlat ? 180 : 0}deg) rotateZ(${rotZ}deg)`
+                        : `translateX(55px) translateY(0px) rotateY(${isFlat ? 180 : 0}deg) rotateZ(${rotZ}deg) scaleX(-1)`;
                 }
 
                 return (
@@ -174,7 +239,11 @@
 
             return (
                 <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[#FDFBF7]">
-                    <main className="w-full max-w-md bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col relative">
+                    
+                    {/* 擲出結果時灑花 */}
+                    {gameState === 'result' && !isRedeemed && <ConfettiEffect />}
+
+                    <main className="w-full max-w-md bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col relative z-10">
                         <div className="h-2.5 w-full flex">
                             <div className="flex-1 bg-[#e03333]"></div>
                             <div className="w-24 bg-[#C5A059]"></div>
@@ -183,21 +252,21 @@
                         <div className="p-10 text-center flex-1 flex flex-col items-center">
                             <div className="mb-6">
                                 <span className="text-[10px] font-bold tracking-[0.5em] uppercase text-[#C5A059] border-b-2 border-[#C5A059] pb-1">
-                                    LINE新好友專屬活動
+                                    {gameState === 'result' ? '🧧 到店出示即可折抵 🧧' : 'LINE新好友專屬活動'}
                                 </span>
                             </div>
                             
                             {gameState !== 'result' && (
                                 <>
                                     <div className="mb-4 px-2">
-                                        <h1 className="text-2xl font-black title-wide leading-[1.6]">新年手氣測驗！挑戰聖筊</h1>
+                                        <h1 className="text-2xl font-black title-wide leading-[1.6]">新春挑戰！擲筊試手氣🤙</h1>
                                     </div>
                                     <p className="text-[#e03333] text-[13px] font-bold mb-10 tracking-[0.3em]">最高現領$1800配鏡金</p>
                                 </>
                             )}
 
-                            {/* 結果頁高度調整為 h-36 */}
-                            <div className={`relative w-full flex flex-col items-center justify-center ${gameState === 'result' ? 'h-36 mt-0 mb-0' : 'h-72 mb-10'}`}>
+                            {/* 筊杯展示容器 - 調整結果頁高度 h-40 */}
+                            <div className={`relative w-full flex flex-col items-center justify-center ${gameState === 'result' ? 'h-40 mt-0 mb-0' : 'h-72 mb-10'}`}>
                                 <div onClick={handleStartDraw} className={`group cursor-pointer flex flex-col items-center w-full transition-all duration-500 ${gameState === 'result' ? 'scale-75' : 'scale-100'}`}>
                                     <div className="flex justify-center items-center w-full relative h-48">
                                         <AuthenticBwei side="left" isTossing={isTossing} isFlat={resultFaces[0] === 1} />
@@ -215,33 +284,43 @@
                             </div>
 
                             {gameState === 'result' && wonPrize && (
-                                <div className="flex flex-col items-center w-full mt-2 mb-4">
-                                    <div className={`p-8 rounded-[2.5rem] border-2 border-[#1A1A1A] w-full relative shadow-[8px_8px_0px_#C5A059] transition-opacity duration-500 ${isRedeemed ? 'bg-gray-100 grayscale opacity-70' : 'bg-[#FAF7F2]'}`}>
-                                        <div className={`absolute -top-4 left-1/2 -translate-x-1/2 text-white px-8 py-1.5 rounded-full text-[11px] font-bold tracking-[0.2em] whitespace-nowrap shadow-lg ${isRedeemed ? 'bg-gray-500' : 'bg-[#1A1A1A]'}`}>
-                                            {isRedeemed ? '券已核銷（已失效）' : (wonPrize.value >= 1000 ? '聖筊 ✨ 恭喜你擲出' : '笑筊 😄 恭喜你擲出')}
+                                <div className="flex flex-col items-center w-full mt-2 animate-in fade-in zoom-in duration-700">
+                                    <div className={`p-8 rounded-[2.5rem] border-2 border-[#1A1A1A] w-full relative shadow-[8px_8px_0px_#C5A059] transition-all duration-500 ${isRedeemed ? 'bg-gray-100 grayscale opacity-70' : 'bg-[#FAF7F2] scale-105'}`}>
+                                        
+                                        {/* 加大結果標籤文字 text-xl */}
+                                        <div className={`absolute -top-7 left-1/2 -translate-x-1/2 text-white px-8 py-3 rounded-full text-xl font-bold tracking-[0.2em] whitespace-nowrap shadow-xl z-20 ${isRedeemed ? 'bg-gray-500' : 'bg-[#1A1A1A] sparkle-label'}`}>
+                                            {isRedeemed ? '券已核銷（已失效）' : (wonPrize.value >= 1000 ? '聖筊 ✨ 恭喜獲得' : '笑筊 😄 恭喜獲得')}
                                         </div>
-                                        <div className="mt-6 flex items-baseline justify-center gap-1 mb-6">
+
+                                        {/* 金額區塊 */}
+                                        <div className="mt-8 flex items-baseline justify-center gap-1 mb-6">
                                             <span className="text-sm text-[#C5A059] font-bold italic">NT$</span>
-                                            <span className="text-7xl font-serif font-black tracking-tighter text-[#e03333]">{wonPrize.value}</span>
+                                            <span className="text-8xl font-serif font-black tracking-tighter text-[#e03333] drop-shadow-md">
+                                                {wonPrize.value}
+                                            </span>
                                         </div>
-                                        <p className="text-lg font-bold text-slate-800 mb-8 tracking-widest">{wonPrize.label}</p>
+
+                                        <p className="text-[1.1rem] font-bold text-slate-800 mb-8 tracking-wider whitespace-nowrap">
+                                            {wonPrize.label}
+                                        </p>
+                                        
                                         <div className="pt-8 border-t-2 border-dashed border-slate-200 space-y-4">
-                                            <p className="text-[11px] text-slate-500 flex items-center justify-center gap-2">
-                                                <Icon name="calendar" size={14} className="text-[#e03333]" />
+                                            <p className="text-[13px] text-slate-600 flex items-center justify-center gap-2 font-bold">
+                                                <Icon name="calendar" size={16} className="text-[#e03333]" />
                                                 有效期限：至 2026/05/31
                                             </p>
-                                            <p className="text-[11px] text-slate-500 flex items-center justify-center gap-2 leading-tight">
-                                                <Icon name="map-pin" size={14} className="text-[#e03333]" />
+                                            <p className="text-[13px] text-slate-600 flex items-center justify-center gap-2 leading-tight">
+                                                <Icon name="map-pin" size={16} className="text-[#e03333]" />
                                                 台南市永康區永大路二段189號
                                             </p>
                                         </div>
                                         {isRedeemed && (
-                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] border-4 border-gray-400 text-gray-400 font-black px-6 py-2 text-3xl rounded-xl opacity-80 pointer-events-none">VOID 已兌換</div>
+                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] border-4 border-gray-400 text-gray-400 font-black px-6 py-2 text-3xl rounded-xl opacity-80 pointer-events-none font-serif">VOID 已兌換</div>
                                         )}
                                     </div>
                                     {!isRedeemed && (
-                                        <button onClick={() => setShowConfirm(true)} className="mt-10 flex items-center gap-2 text-[11px] font-bold text-slate-400 hover:text-[#e03333] transition-colors tracking-[0.3em] uppercase border border-slate-200 px-6 py-2 rounded-full">
-                                            店員核銷專用（請勿點擊）
+                                        <button onClick={() => setShowConfirm(true)} className="mt-12 flex items-center gap-2 text-[11px] font-bold text-slate-400 hover:text-[#e03333] transition-colors tracking-[0.3em] uppercase border border-slate-200 px-6 py-2 rounded-full">
+                                            <Icon name="lock" size={12} className="mr-1" /> 店員核銷專用（請勿點擊）
                                         </button>
                                     )}
                                 </div>
